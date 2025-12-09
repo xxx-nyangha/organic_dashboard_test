@@ -12,12 +12,16 @@
         th { background-color: #f5f6f7; font-weight: 600; }
         a { color: #007bff; text-decoration: none; }
         a:hover { text-decoration: underline; }
+        .loading { text-align: center; padding: 20px; }
+        .error { color: #ed4956; }
     </style>
+    <!-- 👇 Supabase 공식 JavaScript 라이브러리 불러오기 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
         <h1>📈 계정 지표 기록 (최신순)</h1>
-        <p><a href="/">메인 대시보드로 돌아가기</a></p>
+        <p><a href="./index.html">메인 대시보드로 돌아가기</a></p>
         <table>
             <thead>
                 <tr>
@@ -26,20 +30,64 @@
                     <th>게시물 수</th>
                 </tr>
             </thead>
-            <tbody>
-                {% for row in metrics %}
-                    <tr>
-                        <td>{{ row.collect_date }}</td>
-                        <td>{{ row.followers }}</td>
-                        <td>{{ row.media_count }}</td>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <td colspan="3" style="text-align: center; padding: 20px;">아직 저장된 데이터가 없습니다.</td>
-                    </tr>
-                {% endfor %}
+            <!-- 👇 JavaScript가 이 tbody 안의 내용을 채울 겁니다. -->
+            <tbody id="history-table-body">
+                <tr class="loading">
+                    <td colspan="3">데이터를 불러오는 중입니다...</td>
+                </tr>
             </tbody>
         </table>
     </div>
+
+    <script>
+        // --- 👇 JavaScript가 Supabase에 직접 데이터를 요청하는 핵심 로직 ---
+        
+        // 1. Supabase 접속 정보 
+        const SUPABASE_URL = "https://lmzreioocratunlxlams.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtenJlaW9vY3JhdHVubHhsYW1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4NjQ2NTIsImV4cCI6MjA4MDQ0MDY1Mn0.4i6EZxi1-0UqqN08hPSqIOwvHSxGIuxenDTpYmL-s8M"; // 'anon' public 키 사용!
+
+        // 2. Supabase 클라이언트 생성
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // 3. 페이지가 로드되면 데이터를 가져오는 함수 실행
+        window.onload = async function() {
+            const tableBody = document.getElementById('history-table-body');
+
+            try {
+                // DB의 'instagram_metrics' 테이블에서 모든 데이터를 최신순으로 가져옵니다.
+                // Flask app.py의 코드와 정확히 동일한 역할을 합니다.
+                const { data, error } = await supabase
+                    .from('instagram_metrics')
+                    .select('*') // 모든 컬럼을 가져옴
+                    .order('collect_date', { ascending: false });
+
+                if (error) {
+                    throw error; // 오류가 있으면 catch 블록으로 보냄
+                }
+
+                // "로딩중..." 행을 지웁니다.
+                tableBody.innerHTML = '';
+
+                if (data.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">아직 저장된 데이터가 없습니다.</td></tr>';
+                } else {
+                    // 가져온 데이터로 테이블의 행(row)을 만들어서 채워 넣습니다.
+                    data.forEach(row => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${row.collect_date}</td>
+                            <td>${row.followers}</td>
+                            <td>${row.media_count}</td>
+                        `;
+                        tableBody.appendChild(tr);
+                    });
+                }
+
+            } catch (error) {
+                // 데이터를 가져오는 데 실패하면, 오류 메시지를 표시합니다.
+                tableBody.innerHTML = `<tr><td colspan="3" class="error">데이터를 불러오는 데 실패했습니다: ${error.message}</td></tr>`;
+            }
+        };
+    </script>
 </body>
 </html>
