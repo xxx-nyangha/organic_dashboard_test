@@ -19,11 +19,9 @@
     </div>
 
     <script>
-        // --- 👇 [핵심] JavaScript가 Supabase에 직접 데이터를 요청합니다. ---
-        
-        // 1. Supabase 접속 정보 (이 정보는 외부에 공개되어도 안전합니다.)
-        const SUPABASE_URL = "YOUR_SUPABASE_URL";
-        const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"; // 'anon' public 키 사용!
+
+        const SUPABASE_URL = "https://lmzreioocratunlxlams.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtenJlaW9vY3JhdHVubHhsYW1zIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDg2NDY1MiwiZXhwIjoyMDgwNDQwNjUyfQ.WNF3U4Ne_tzpD_oKWoZ5TlCu7qnfqu_xqPt4dM-ya4"; // 'anon' public 키 사용!
 
         // 2. Supabase 클라이언트 생성
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
