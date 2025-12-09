@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>계정 지표 기록</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background-color: #f0f2f5; }
+        .container { max-width: 800px; margin: auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        h1 { color: #1c1e21; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f5f6f7; font-weight: 600; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 계정 지표 기록 (최신순)</h1>
+        <p><a href="/">메인 대시보드로 돌아가기</a></p>
+        <table>
+            <thead>
+                <tr>
+                    <th>수집 날짜</th>
+                    <th>팔로워 수</th>
+                    <th>게시물 수</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in metrics %}
+                    <tr>
+                        <td>{{ row.collect_date }}</td>
+                        <td>{{ row.followers }}</td>
+                        <td>{{ row.media_count }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 20px;">아직 저장된 데이터가 없습니다.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>콘텐츠 목록</title>
+    <!-- ... (이전의 <style> 코드는 그대로 둡니다) ... -->
+    
+    <!-- 👇 [핵심] Supabase의 공식 JavaScript 라이브러리를 불러옵니다. -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ 콘텐츠 목록 및 상세 지표</h1>
+        <p><a href="./index.html">메인 대시보드로 돌아가기</a></p>
+        <div id="loading-spinner">데이터를 불러오는 중입니다...</div>
+        <div id="media-grid" class="media-grid">
+            <!-- 데이터는 JavaScript가 채워 넣을 겁니다. -->
+        </div>
+    </div>
+
+    <script>
+        // --- 👇 [핵심] JavaScript가 Supabase에 직접 데이터를 요청합니다. ---
+        
+        // 1. Supabase 접속 정보 (이 정보는 외부에 공개되어도 안전합니다.)
+        const SUPABASE_URL = "YOUR_SUPABASE_URL";
+        const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY"; // 'anon' public 키 사용!
+
+        // 2. Supabase 클라이언트 생성
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // 3. 페이지가 로드되면 데이터를 가져오는 함수 실행
+        window.onload = async function() {
+            const mediaGrid = document.getElementById('media-grid');
+            const loadingSpinner = document.getElementById('loading-spinner');
+
+            try {
+                // 'get_latest_media_with_metrics' DB 함수를 호출합니다.
+                const { data, error } = await supabase.rpc('get_latest_media_with_metrics');
+
+                if (error) {
+                    throw error; // 오류가 있으면 catch 블록으로 보냄
+                }
+
+                if (data.length === 0) {
+                    mediaGrid.innerHTML = '<p>표시할 콘텐츠가 없습니다.</p>';
+                } else {
+                    // 가져온 데이터로 HTML 요소를 만들어서 채워 넣음
+                    data.forEach(media => {
+                        const mediaItem = document.createElement('div');
+                        mediaItem.className = 'media-item';
+                        
+                        let mediaElement = '';
+                        if (media.media_type === 1) { // 1: VIDEO
+                            // media_url이 없으므로, permalink로 대체
+                            mediaElement = `<a href="${media.permalink}" target="_blank"><div class="video-placeholder">🎥 비디오 보기</div></a>`;
+                        } else {
+                            // media_url이 없으므로, permalink로 대체
+                            mediaElement = `<a href="${media.permalink}" target="_blank"><div class="image-placeholder">🖼️ 이미지 보기</div></a>`;
+                        }
+
+                        mediaItem.innerHTML = `
+                            ${mediaElement}
+                            <div class="media-content">
+                                <div class="media-stats">
+                                    <span>❤️ <strong>${media.like_count || 0}</strong></span>
+                                    <span>💬 <strong>${media.comments_count || 0}</strong></span>
+                                    <span>🎯 도달: <strong>${media.reach || 0}</strong></span>
+                                </div>
+                                <p class="media-caption" title="${media.caption || ''}">${(media.caption || '').substring(0, 80)}</p>
+                                <p><small>게시일: ${media.post_date}</small></p>
+                            </div>
+                        `;
+                        mediaGrid.appendChild(mediaItem);
+                    });
+                }
+
+            } catch (error) {
+                mediaGrid.innerHTML = `<p class="error">데이터를 불러오는 데 실패했습니다: ${error.message}</p>`;
+            } finally {
+                loadingSpinner.style.display = 'none'; // 로딩 스피너 숨기기
+            }
+        };
+    </script>
+</body>
+</html>

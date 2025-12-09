@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>나의 인스타그램 대시보드</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background-color: #fafafa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .dashboard-container { text-align: center; }
+        .card { 
+            background-color: white;
+            border: 1px solid #dbdbdb; 
+            border-radius: 8px; 
+            padding: 24px; 
+            width: 350px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: left;
+        }
+        h1 { color: #262626; margin-bottom: 24px; }
+        h2 { margin-top: 0; color: #262626; font-size: 20px;}
+        p { color: #8e8e8e; font-size: 16px; margin: 12px 0; }
+        strong { color: #262626; font-size: 18px; }
+        .error { color: #ed4956; font-weight: bold; }
+        .nav-links { margin-top: 20px; border-top: 1px solid #dbdbdb; padding-top: 20px; }
+        .nav-links a { display: block; color: #0095f6; text-decoration: none; font-size: 16px; padding: 8px 0; }
+        .nav-links a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <h1>📊 나의 인스타그램 대시보드</h1>
+        <div class="card">
+            {% if data %}
+                <!-- [성공] app.py에서 data 변수가 성공적으로 넘어왔을 때 -->
+                <h2>@{{ data.username }}</h2>
+                <p><strong>{{ data.followers_count }}</strong> 명의 팔로워</p>
+                <p><strong>{{ data.media_count }}</strong> 개의 게시물</p>
+
+            {% elif error %}
+                 <!-- [실패] app.py에서 error 변수가 넘어왔을 때 -->
+                <h2>⚠️ 오류 발생</h2>
+                <p class="error">데이터를 불러오는 데 실패했습니다.</p>
+                <p class="error"><small>{{ error }}</small></p>
+
+            {% else %}
+                <!-- [로딩] 데이터도, 에러도 없는 초기 상태 -->
+                <h2>로딩 중...</h2>
+                <p>데이터를 불러오는 중입니다.</p>
+            {% endif %}
+            
+            <div class="nav-links">
+                <a href="/history">📈 계정 지표 기록 보기</a>
+                <a href="/media">🖼️ 콘텐츠별 상세 지표 보기</a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
