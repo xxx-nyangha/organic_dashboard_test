@@ -2,80 +2,103 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>콘텐츠 목록</title>
-    <!-- ... (이전의 <style> 코드는 그대로 둡니다) ... -->
-    
-    <!-- 👇 [핵심] Supabase의 공식 JavaScript 라이브러리를 불러옵니다. -->
+    <title>나의 인스타그램 대시보드</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background-color: #fafafa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .dashboard-container { text-align: center; }
+        .card { 
+            background-color: white;
+            border: 1px solid #dbdbdb; 
+            border-radius: 8px; 
+            padding: 24px; 
+            width: 350px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+        h1 { color: #262626; margin-bottom: 24px; }
+        h2 { margin-top: 0; color: #262626; font-size: 20px; min-height: 24px; }
+        p { color: #8e8e8e; font-size: 16px; margin: 12px 0; min-height: 24px;}
+        strong { color: #262626; font-size: 18px; }
+        .error { color: #ed4956; font-weight: bold; }
+        .nav-links { margin-top: 20px; border-top: 1px solid #dbdbdb; padding-top: 20px; }
+        .nav-links a { display: block; color: #0095f6; text-decoration: none; font-size: 16px; padding: 8px 0; }
+        .nav-links a:hover { text-decoration: underline; }
+    </style>
+    <!-- 👇 Supabase 공식 JavaScript 라이브러리 불러오기 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>🖼️ 콘텐츠 목록 및 상세 지표</h1>
-        <p><a href="./index.html">메인 대시보드로 돌아가기</a></p>
-        <div id="loading-spinner">데이터를 불러오는 중입니다...</div>
-        <div id="media-grid" class="media-grid">
-            <!-- 데이터는 JavaScript가 채워 넣을 겁니다. -->
+
+    <div class="dashboard-container">
+        <h1>📊 나의 인스타그램 대시보드</h1>
+        <div class="card">
+            <!-- 데이터가 채워질 공간 -->
+            <h2 id="username-display">@로딩중...</h2>
+            <p><strong id="followers-display">...</strong> 명의 팔로워</p>
+            <p><strong id="media-count-display">...</strong> 개의 게시물</p>
+            
+            <div id="error-display" style="display: none;">
+                <h2>⚠️ 오류 발생</h2>
+                <p class="error" id="error-message"></p>
+            </div>
+
+            <div class="nav-links">
+                <!-- 다른 페이지로 이동하는 링크 (파일 이름을 정확히 맞춰주세요) -->
+                <a href="./history.html">📈 계정 지표 기록 보기</a>
+                <a href="./media.html">🖼️ 콘텐츠별 상세 지표 보기</a>
+            </div>
         </div>
     </div>
 
     <script>
-
+        // --- 👇 JavaScript가 Supabase에 직접 데이터를 요청하는 핵심 로직 ---
+        
+        // 1. Supabase 접속 정보
         const SUPABASE_URL = "https://lmzreioocratunlxlams.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtenJlaW9vY3JhdHVubHhsYW1zIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDg2NDY1MiwiZXhwIjoyMDgwNDQwNjUyfQ.WNF3U4Ne_tzpD_oKWoZ5TlCu7qnfqu_xqPt4dM-ya4"; // 'anon' public 키 사용!
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtenJlaW9vY3JhdHVubHhsYW1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4NjQ2NTIsImV4cCI6MjA4MDQ0MDY1Mn0.4i6EZxi1-0UqqN08hPSqIOwvHSxGIuxenDTpYmL-s8M"; // 'anon' public 키 사용!
 
         // 2. Supabase 클라이언트 생성
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // 3. 페이지가 로드되면 데이터를 가져오는 함수 실행
         window.onload = async function() {
-            const mediaGrid = document.getElementById('media-grid');
-            const loadingSpinner = document.getElementById('loading-spinner');
+            // HTML 요소들을 미리 찾아놓기
+            const usernameEl = document.getElementById('username-display');
+            const followersEl = document.getElementById('followers-display');
+            const mediaCountEl = document.getElementById('media-count-display');
+            const errorDisplayEl = document.getElementById('error-display');
+            const errorMessageEl = document.getElementById('error-message');
 
             try {
-                // 'get_latest_media_with_metrics' DB 함수를 호출합니다.
-                const { data, error } = await supabase.rpc('get_latest_media_with_metrics');
+                // DB의 'instagram_metrics' 테이블에서 가장 최신 데이터 1개만 가져옵니다.
+                // Flask app.py의 코드와 정확히 동일한 역할을 합니다.
+                const { data, error } = await supabase
+                    .from('instagram_metrics')
+                    .select('followers, media_count') // username은 이 테이블에 없으므로 제외
+                    .order('collect_date', { ascending: false })
+                    .limit(1)
+                    .single();
 
                 if (error) {
                     throw error; // 오류가 있으면 catch 블록으로 보냄
                 }
 
-                if (data.length === 0) {
-                    mediaGrid.innerHTML = '<p>표시할 콘텐츠가 없습니다.</p>';
+                if (data) {
+                    // 성공적으로 데이터를 가져왔으면, HTML 내용을 채워 넣습니다.
+                    // usernameEl.innerText = `@${data.username}`; // username은 현재 가져올 수 없음
+                    usernameEl.innerText = "계정 현황"; // 임시 텍스트
+                    followersEl.innerText = data.followers;
+                    mediaCountEl.innerText = data.media_count;
                 } else {
-                    // 가져온 데이터로 HTML 요소를 만들어서 채워 넣음
-                    data.forEach(media => {
-                        const mediaItem = document.createElement('div');
-                        mediaItem.className = 'media-item';
-                        
-                        let mediaElement = '';
-                        if (media.media_type === 1) { // 1: VIDEO
-                            // media_url이 없으므로, permalink로 대체
-                            mediaElement = `<a href="${media.permalink}" target="_blank"><div class="video-placeholder">🎥 비디오 보기</div></a>`;
-                        } else {
-                            // media_url이 없으므로, permalink로 대체
-                            mediaElement = `<a href="${media.permalink}" target="_blank"><div class="image-placeholder">🖼️ 이미지 보기</div></a>`;
-                        }
-
-                        mediaItem.innerHTML = `
-                            ${mediaElement}
-                            <div class="media-content">
-                                <div class="media-stats">
-                                    <span>❤️ <strong>${media.like_count || 0}</strong></span>
-                                    <span>💬 <strong>${media.comments_count || 0}</strong></span>
-                                    <span>🎯 도달: <strong>${media.reach || 0}</strong></span>
-                                </div>
-                                <p class="media-caption" title="${media.caption || ''}">${(media.caption || '').substring(0, 80)}</p>
-                                <p><small>게시일: ${media.post_date}</small></p>
-                            </div>
-                        `;
-                        mediaGrid.appendChild(mediaItem);
-                    });
+                    throw new Error("가져올 데이터가 없습니다. 자동화 로봇이 데이터를 수집했는지 확인하세요.");
                 }
 
             } catch (error) {
-                mediaGrid.innerHTML = `<p class="error">데이터를 불러오는 데 실패했습니다: ${error.message}</p>`;
-            } finally {
-                loadingSpinner.style.display = 'none'; // 로딩 스피너 숨기기
+                // 데이터를 가져오는 데 실패하면, 오류 메시지를 표시합니다.
+                usernameEl.parentElement.style.display = 'none'; // 기존 정보 숨기기
+                errorDisplayEl.style.display = 'block'; // 에러 박스 보이기
+                errorMessageEl.innerText = error.message;
             }
         };
     </script>
