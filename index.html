@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>INSTAGRAM DASHBOARD</title>
+    <title>냔냐ㅑ냔냔</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background-color: #fafafa; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
         .dashboard-container { text-align: center; }
@@ -14,92 +14,130 @@
             width: 350px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             text-align: left;
-            margin-bottom: 20px; /* 카드 사이 간격 */
         }
         h1 { color: #262626; margin-bottom: 24px; }
-        h2 { margin-top: 0; color: #262626; font-size: 20px; min-height: 24px; }
-        p { color: #8e8e8e; font-size: 16px; margin: 12px 0; min-height: 24px;}
-        strong { color: #262626; font-size: 18px; }
+        h2 { margin-top: 0; color: #262626; font-size: 20px; }
+        p { color: #8e8e8e; font-size: 16px; margin: 12px 0; }
         .error { color: #ed4956; font-weight: bold; }
         .nav-links { margin-top: 20px; border-top: 1px solid #dbdbdb; padding-top: 20px; }
         .nav-links a { display: block; color: #0095f6; text-decoration: none; font-size: 16px; padding: 8px 0; }
+        
         /* 목록 스타일 */
-        .metrics-list { list-style: none; padding-left: 0; }
-        .metrics-list li { margin-bottom: 8px; }
+        .metrics-list { list-style: none; padding-left: 0; margin-top: 15px; }
+        .metrics-list li { 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #efefef;
+            font-size: 16px;
+            color: #555;
+        }
+        .metrics-list li:first-child { border-top: 1px solid #efefef; padding-top: 15px; }
+        .metrics-list li:last-child { border-bottom: none; }
+        .metrics-list strong { color: #262626; font-size: 18px; }
     </style>
-    <!-- 👇 Supabase 공식 JavaScript 라이브러리 불러오기 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="dashboard-container">
-        <h1>📊 나의 인스타그램 대시보드</h1>
-        
-        <!-- 첫 번째 카드: 기존 계정 현황 (원래 코드 그대로) -->
+        <h1>📊 인스타그램 요약</h1>
+
         <div class="card">
-            <h2 id="username-display">@로딩중...</h2>
+            <!-- 데이터가 채워질 공간 -->
+            <h2 id="date-display">데이터 로딩중...</h2>
+            
             <p><strong id="followers-display">...</strong> 명의 팔로워</p>
             <p><strong id="media-count-display">...</strong> 개의 게시물</p>
+
+            <ul id="metrics-container" class="metrics-list">
+                <!-- 자바스크립트가 일일 지표 목록을 채워넣을 겁니다 -->
+            </ul>
+            
             <div id="error-display" style="display: none;">
                 <h2>⚠️ 오류 발생</h2>
                 <p class="error" id="error-message"></p>
             </div>
-            <div class="nav-links">
-                <a href="./history.html">📈 계정 지표 기록 보기</a>
-                <a href="./media.html">🖼️ 콘텐츠별 상세 지표 보기</a>
-            </div>
-        </div>
 
-        <!-- 두 번째 카드: 수집 중인 지표 목록 -->
-        <div class="card">
-            <h2>⚙️ 수집 중인 일일 지표</h2>
-            <ul class="metrics-list">
-                <li><b>도달</b> (reach)</li>
-                <li><b>노출</b> (views)</li>
-                <li><b>프로필 방문</b> (profile_views)</li>
-                <li><b>총 상호작용</b> (total_interactions)</li>
-                <li><b>좋아요</b> (likes)</li>
-                <li><b>댓글</b> (comments)</li>
-                <li><b>공유</b> (shares)</li>
-            </ul>
+            <div class="nav-links">
+                <a href="./history.html">📈 과거 데이터 전체 보기</a>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- 👇 JavaScript 로직을 마케터님이 처음에 주셨던 '원래 코드'로 되돌렸습니다. ---
+        // --- 👇 두 개의 테이블에서 데이터를 모두 가져오는 최종 로직 ---
         
         const SUPABASE_URL = "https://lmzreioocratunlxlams.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtenJlaW9vY3JhdHVubHhsYW1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4NjQ2NTIsImV4cCI6MjA4MDQ0MDY1Mn0.4i6EZxi1-0UqqN08hPSqIOwvHSxGIuxenDTpYmL-s8M";
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         window.onload = async function() {
-            const usernameEl = document.getElementById('username-display');
+            const dateEl = document.getElementById('date-display');
             const followersEl = document.getElementById('followers-display');
             const mediaCountEl = document.getElementById('media-count-display');
+            const metricsContainerEl = document.getElementById('metrics-container');
             const errorDisplayEl = document.getElementById('error-display');
             const errorMessageEl = document.getElementById('error-message');
             
             try {
-                // 'instagram_metrics' 테이블과 'collect_date'를 사용하는 원래 로직
-                const { data, error } = await supabase
+                // [요청 1] 'instagram_metrics' 테이블에서 최신 데이터 가져오기
+                const query1 = supabase
                     .from('instagram_metrics')
                     .select('followers, media_count')
                     .order('collect_date', { ascending: false })
                     .limit(1)
                     .single();
 
-                if (error) throw error;
+                // [요청 2] 'daily_account_metrics' 테이블에서 최신 데이터 가져오기
+                const query2 = supabase
+                    .from('daily_account_metrics')
+                    .select('date, reach, views, profile_views, total_interactions, likes, comments, shares')
+                    .order('date', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                // Promise.all을 사용해 두 개의 요청을 '동시에' 실행하고, 모두 끝날 때까지 기다립니다.
+                const [response1, response2] = await Promise.all([query1, query2]);
+
+                // 두 응답 중 하나라도 에러가 있으면, 에러를 던집니다.
+                if (response1.error) throw response1.error;
+                if (response2.error) throw response2.error;
                 
-                if (data) {
-                    usernameEl.innerText = "계정 현황";
-                    followersEl.innerText = data.followers;
-                    mediaCountEl.innerText = data.media_count;
+                const generalData = response1.data;
+                const dailyData = response2.data;
+
+                if (generalData && dailyData) {
+                    // [표시 1] generalData로 팔로워, 게시물 수 채우기
+                    followersEl.innerText = generalData.followers.toLocaleString();
+                    mediaCountEl.innerText = generalData.media_count.toLocaleString();
+                    
+                    // [표시 2] dailyData로 날짜 및 일일 지표 목록 채우기
+                    dateEl.innerText = `📈 ${dailyData.date} 기준 데이터`;
+                    
+                    const metricNames = {
+                        reach: '도달',
+                        views: '노출',
+                        profile_views: '프로필 방문',
+                        total_interactions: '총 상호작용',
+                        likes: '좋아요',
+                        comments: '댓글',
+                        shares: '공유'
+                    };
+
+                    for (const key in metricNames) {
+                        const value = dailyData[key] || 0;
+                        const listItem = document.createElement('li');
+                        listItem.innerHTML = `<span>${metricNames[key]}</span> <strong>${value.toLocaleString()}</strong>`;
+                        metricsContainerEl.appendChild(listItem);
+                    }
                 } else {
-                    throw new Error("가져올 데이터가 없습니다.");
+                    throw new Error("두 테이블 중 하나의 데이터가 비어있습니다. 데이터 수집 상태를 확인하세요.");
                 }
 
             } catch (error) {
-                usernameEl.parentElement.style.display = 'none';
-                errorDisplayEl.style.display = 'block';
+                dateEl.parentElement.style.display = 'none'; // 카드 내용 숨기기
+                errorDisplayEl.style.display = 'block'; // 에러 박스 보이기
                 errorMessageEl.innerText = error.message;
             }
         };
