@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>INSTAGRAM DASHBOARD</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background-color: #fafafa; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background-color: #fafafa; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
         .dashboard-container { text-align: center; }
         .card { 
             background-color: white;
@@ -14,104 +14,64 @@
             width: 350px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             text-align: left;
-            transition: all 0.3s ease;
         }
         h1 { color: #262626; margin-bottom: 24px; }
-        h2 { margin-top: 0; color: #262626; font-size: 20px; min-height: 24px; }
-        p { color: #8e8e8e; font-size: 16px; margin: 12px 0; min-height: 24px;}
-        strong { color: #262626; font-size: 18px; }
+        h2 { margin-top: 0; color: #262626; font-size: 20px; }
         .error { color: #ed4956; font-weight: bold; }
         .nav-links { margin-top: 20px; border-top: 1px solid #dbdbdb; padding-top: 20px; }
         .nav-links a { display: block; color: #0095f6; text-decoration: none; font-size: 16px; padding: 8px 0; }
-        .nav-links a:hover { text-decoration: underline; }
-        /* 목록 스타일 추가 */
-        .metrics-list { list-style-type: none; padding-left: 0; }
-        .metrics-list li { margin-bottom: 8px; }
+        
+        /* 목록 스타일 */
+        .metrics-list { list-style: none; padding-left: 0; margin-top: 20px; }
+        .metrics-list li { 
+            display: flex; 
+            justify-content: space-between; /* 이름과 숫자를 양 끝으로 */
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #efefef; /* 구분선 */
+            font-size: 16px;
+            color: #555;
+        }
+        .metrics-list li:last-child { border-bottom: none; }
+        .metrics-list strong { color: #262626; font-size: 18px; }
     </style>
     <!-- 👇 Supabase 공식 JavaScript 라이브러리 불러오기 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="dashboard-container">
-        <h1>📊 나의 인스타그램 대시보드</h1>
-        
-        <!-- 첫 번째 카드: 계정 현황 -->
+        <h1>📊 인스타그램 일일 요약</h1>
+
         <div class="card">
-            <h2 id="username-display">@로딩중...</h2>
-            <p><strong id="followers-display">...</strong> 명의 팔로워</p>
-            <p><strong id="media-count-display">...</strong> 개의 게시물</p>
+            <!-- 데이터가 채워질 공간 -->
+            <h2 id="date-display">데이터 로딩중...</h2>
+            
+            <ul id="metrics-container" class="metrics-list">
+                <!-- 자바스크립트가 이 안에 목록을 채워넣을 겁니다 -->
+            </ul>
             
             <div id="error-display" style="display: none;">
                 <h2>⚠️ 오류 발생</h2>
                 <p class="error" id="error-message"></p>
             </div>
+
             <div class="nav-links">
-                <a href="./history.html">📈 계정 지표 기록 보기</a>
-                <a href="./media.html">🖼️ 콘텐츠별 상세 지표 보기</a>
+                <a href="./history.html">📈 과거 데이터 전체 보기</a>
             </div>
         </div>
-
-        <!-- ======================================================== -->
-        <!-- 👇👇👇 여기에 새로운 카드를 추가했습니다! 👇👇👇 -->
-        <!-- ======================================================== -->
-
-        <!-- 두 번째 카드: 수집 중인 지표 목록 -->
-        <div class="card" style="margin-top: 20px;">
-            <h2>⚙️ 수집 중인 일일 지표</h2>
-            <ul class="metrics-list">
-                <li><b>도달</b> (reach)</li>
-                <li><b>노출</b> (views)</li>
-                <li><b>프로필 방문</b> (profile_views)</li>
-                <li><b>총 상호작용</b> (total_interactions)</li>
-                <li><b>좋아요</b> (likes)</li>
-                <li><b>댓글</b> (comments)</li>
-                <li><b>공유</b> (shares)</li>
-            </ul>
-        </div>
-
     </div>
 
     <script>
-        // --- 👇 JavaScript 로직은 변경 없이 그대로 유지됩니다 ---
+        // --- 👇 Supabase에서 모든 지표 데이터를 가져와 화면에 뿌려주는 핵심 로직 ---
         
-        const SUPABASE_URL = "https://lmzreioocratunlxlams.supabase.co";
+        // 1. Supabase 접속 정보
+        const SUPABASE_URL = "https://lmzreioocratunlxlams.supabase.co"; // 본인 URL 확인
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtenJlaW9vY3JhdHVubHhsYW1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4NjQ2NTIsImV4cCI6MjA4MDQ0MDY1Mn0.4i6EZxi1-0UqqN08hPSqIOwvHSxGIuxenDTpYmL-s8M";
+        
+        // 2. Supabase 클라이언트 생성
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
+        // 3. 페이지가 로드되면 데이터를 가져오는 함수 실행
         window.onload = async function() {
-            const usernameEl = document.getElementById('username-display');
-            const followersEl = document.getElementById('followers-display');
-            const mediaCountEl = document.getElementById('media-count-display');
-            const errorDisplayEl = document.getElementById('error-display');
-            const errorMessageEl = document.getElementById('error-message');
-            
-            try {
-                // 'daily_account_metrics' 테이블에서 최신 데이터를 가져옵니다.
-                // (기존 'instagram_metrics'에서 테이블 이름을 변경했습니다)
-                const { data, error } = await supabase
-                    .from('daily_account_metrics')
-                    .select('follower_count, media_count') // 'follower_count' 등 컬럼 이름 확인
-                    .order('date', { ascending: false })
-                    .limit(1)
-                    .single();
-
-                if (error) throw error;
-                
-                if (data) {
-                    usernameEl.innerText = "계정 현황";
-                    // Supabase 테이블의 컬럼 이름에 맞게 수정
-                    followersEl.innerText = data.follower_count || '...';
-                    mediaCountEl.innerText = data.media_count || '...';
-                } else {
-                    throw new Error("가져올 데이터가 없습니다. 자동화 로봇이 데이터를 수집했는지 확인하세요.");
-                }
-
-            } catch (error) {
-                usernameEl.parentElement.style.display = 'none';
-                errorDisplayEl.style.display = 'block';
-                errorMessageEl.innerText = error.message;
-            }
-        };
-    </script>
-</body>
-</html>
+            const dateEl = document.getElementById('date-display');
+            const metricsContainerEl = document.getElementById('metrics-con
