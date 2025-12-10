@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>냔냐ㅑ냔냔</title>
+    <title>INSTAGRAM DASHBOARD</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background-color: #fafafa; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
         .dashboard-container { text-align: center; }
@@ -22,7 +22,6 @@
         .nav-links { margin-top: 20px; border-top: 1px solid #dbdbdb; padding-top: 20px; }
         .nav-links a { display: block; color: #0095f6; text-decoration: none; font-size: 16px; padding: 8px 0; }
         
-        /* 목록 스타일 */
         .metrics-list { list-style: none; padding-left: 0; margin-top: 15px; }
         .metrics-list li { 
             display: flex; 
@@ -36,22 +35,27 @@
         .metrics-list li:first-child { border-top: 1px solid #efefef; padding-top: 15px; }
         .metrics-list li:last-child { border-bottom: none; }
         .metrics-list strong { color: #262626; font-size: 18px; }
+        
+        /* 툴팁 효과를 위한 스타일 */
+        .metric-name {
+            cursor: help; /* 마우스 커서를 물음표 모양으로 변경 */
+            text-decoration: underline dotted #aaa; /* 이름 아래에 점선 밑줄 추가 */
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="dashboard-container">
-        <h1>📊 I G </h1>
+        <h1>📊 인스타그램 요약</h1>
 
         <div class="card">
-            <!-- 데이터가 채워질 공간 -->
             <h2 id="date-display">데이터 로딩중...</h2>
             
             <p><strong id="followers-display">...</strong> 명의 팔로워</p>
             <p><strong id="media-count-display">...</strong> 개의 게시물</p>
 
             <ul id="metrics-container" class="metrics-list">
-                <!-- 자바스크립트가 일일 지표 목록을 채워넣을 겁니다 -->
+                <!-- 자바스크립트가 여기에 목록을 채웁니다 -->
             </ul>
             
             <div id="error-display" style="display: none;">
@@ -66,8 +70,6 @@
     </div>
 
     <script>
-        // --- 👇 두 개의 테이블에서 데이터를 모두 가져오는 최종 로직 ---
-        
         const SUPABASE_URL = "https://lmzreioocratunlxlams.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtenJlaW9vY3JhdHVubHhsYW1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4NjQ2NTIsImV4cCI6MjA4MDQ0MDY1Mn0.4i6EZxi1-0UqqN08hPSqIOwvHSxGIuxenDTpYmL-s8M";
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -81,7 +83,7 @@
             const errorMessageEl = document.getElementById('error-message');
             
             try {
-                // [요청 1] 'instagram_metrics' 테이블에서 최신 데이터 가져오기
+                // [요청 1] 'instagram_metrics'
                 const query1 = supabase
                     .from('instagram_metrics')
                     .select('followers, media_count')
@@ -89,7 +91,7 @@
                     .limit(1)
                     .single();
 
-                // [요청 2] 'daily_account_metrics' 테이블에서 최신 데이터 가져오기
+                // [요청 2] 'daily_account_metrics'
                 const query2 = supabase
                     .from('ig_daily_account_metrics')
                     .select('date, reach, views, profile_views, total_interactions, likes, comments, shares')
@@ -97,10 +99,8 @@
                     .limit(1)
                     .single();
 
-                // Promise.all을 사용해 두 개의 요청을 '동시에' 실행하고, 모두 끝날 때까지 기다립니다.
                 const [response1, response2] = await Promise.all([query1, query2]);
 
-                // 두 응답 중 하나라도 에러가 있으면, 에러를 던집니다.
                 if (response1.error) throw response1.error;
                 if (response2.error) throw response2.error;
                 
@@ -108,27 +108,32 @@
                 const dailyData = response2.data;
 
                 if (generalData && dailyData) {
-                    // [표시 1] generalData로 팔로워, 게시물 수 채우기
                     followersEl.innerText = generalData.followers.toLocaleString();
                     mediaCountEl.innerText = generalData.media_count.toLocaleString();
-                    
-                    // [표시 2] dailyData로 날짜 및 일일 지표 목록 채우기
                     dateEl.innerText = `📈 ${dailyData.date} 기준 데이터`;
                     
-                    const metricNames = {
-                        reach: '도달',
-                        views: '조회',
-                        profile_views: '프로필 방문',
-                        total_interactions: '총 상호작용',
-                        likes: '좋아요',
-                        comments: '댓글',
-                        shares: '공유'
+                    // ==========================================================
+                    // 👇👇👇 여기에 지표 이름과 '공식 설명'을 함께 정의합니다! 👇👇👇
+                    // ==========================================================
+                    const metricInfo = {
+                        reach: { name: '도달', description: '계정의 콘텐츠를 한 번 이상 본 고유 계정의 총 수입니다.' },
+                        views: { name: '노출', description: '계정의 모든 콘텐츠가 표시된 총 횟수입니다.' },
+                        profile_views: { name: '프로필 방문', description: '계정의 프로필이 조회된 총 횟수입니다.' },
+                        total_interactions: { name: '총 상호작용', description: '콘텐츠에서 발생한 총 인터랙션(좋아요, 댓글, 저장 등) 수입니다.' },
+                        likes: { name: '좋아요', description: '계정의 모든 미디어(게시물, 릴스 등)에서 받은 좋아요 수입니다.' },
+                        comments: { name: '댓글', description: '계정의 모든 미디어에서 받은 댓글 수입니다.' },
+                        shares: { name: '공유', description: '계정의 모든 미디어가 공유된 횟수입니다.' }
                     };
 
-                    for (const key in metricNames) {
+                    for (const key in metricInfo) {
                         const value = dailyData[key] || 0;
+                        const info = metricInfo[key];
+                        
                         const listItem = document.createElement('li');
-                        listItem.innerHTML = `<span>${metricNames[key]}</span> <strong>${value.toLocaleString()}</strong>`;
+                        
+                        // title 속성에 공식 설명을 넣어 툴팁을 만듭니다.
+                        listItem.innerHTML = `<span class="metric-name" title="${info.description}">${info.name}</span> <strong>${value.toLocaleString()}</strong>`;
+                        
                         metricsContainerEl.appendChild(listItem);
                     }
                 } else {
@@ -136,13 +141,11 @@
                 }
 
             } catch (error) {
-                dateEl.parentElement.style.display = 'none'; // 카드 내용 숨기기
-                errorDisplayEl.style.display = 'block'; // 에러 박스 보이기
+                dateEl.parentElement.style.display = 'none';
+                errorDisplayEl.style.display = 'block';
                 errorMessageEl.innerText = error.message;
             }
         };
     </script>
 </body>
 </html>
-
-
