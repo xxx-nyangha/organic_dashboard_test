@@ -41,7 +41,7 @@
 </head>
 <body>
     <div class="dashboard-container">
-        <h1>📊 인스타그램 요약</h1>
+        <h1>📊 I G </h1>
 
         <div class="card">
             <!-- 데이터가 채워질 공간 -->
@@ -91,7 +91,7 @@
 
                 // [요청 2] 'daily_account_metrics' 테이블에서 최신 데이터 가져오기
                 const query2 = supabase
-                    .from('daily_account_metrics')
+                    .from('ig_daily_account_metrics')
                     .select('date, reach, views, profile_views, total_interactions, likes, comments, shares')
                     .order('date', { ascending: false })
                     .limit(1)
@@ -144,4 +144,5 @@
     </script>
 </body>
 </html>
+
 
