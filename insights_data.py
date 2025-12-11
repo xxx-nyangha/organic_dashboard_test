@@ -16,97 +16,80 @@ SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 API_VERSION = "v24.0"
 
 # --- 2. API 요청 준비 ---
-metrics_to_fetch = [
-    'total_interactions', 'comments', 'likes', 'reach', 'shares', 'views', 'profile_views'
-]
-metrics_string = ",".join(metrics_to_fetch)
+# --- 2. 날짜 및 API 파라미터 준비 ---
+kst_now = datetime.now(ZoneInfo("Asia/Seoul"))
+yesterday_dt = kst_now - timedelta(days=1)
+date_to_insert = yesterday_dt.strftime('%Y-%m-%d')
+until_dt = kst_now.replace(hour=0, minute=0, second=0, microsecond=0)
+until_timestamp = int(until_dt.timestamp())
+
 url_insights = f"https://graph.facebook.com/{API_VERSION}/{IG_ACCOUNT_ID}/insights"
-params_insights = {
-    'metric': metrics_string, 'period': 'day', 'metric_type': 'total_value', 'access_token': ACCESS_TOKEN
+daily_metrics = "total_interactions,comments,likes,reach,shares,views,profile_views"
+params_daily = {
+    'metric': daily_metrics, 'period': 'day', 'since': int(yesterday_dt.timestamp()), 'until': until_timestamp, 'access_token': ACCESS_TOKEN
 }
+
 url_account_info = f"https://graph.facebook.com/{API_VERSION}/{IG_ACCOUNT_ID}"
 params_account_info = {
     'fields': 'followers_count,media_count', 'access_token': ACCESS_TOKEN
 }
 
+
 # --- 3. API 요청 보내기 ---
-response_data_insights = None
-response_data_account = None
+metrics_dict = {}
+account_dict = {}
 
 try:
-    if not IG_ACCOUNT_ID:
-        raise ValueError("IG_ACCOUNT_ID is not loaded from .env file.")
-
-    print(f"Requesting {len(metrics_to_fetch)} daily insights from API...")
-    response_insights = requests.get(url_insights, params=params_insights)
-    response_insights.raise_for_status()
-    response_data_insights = response_insights.json()
+    if not IG_ACCOUNT_ID: raise ValueError("IG_ACCOUNT_ID not loaded.")
+    
+    # 3-1. 일일 증감 지표 API 호출
+    print("Requesting daily insights...")
+    response_daily = requests.get(url_insights, params=params_daily)
+    response_daily.raise_for_status()
+    for item in response_daily.json()['data']:
+        metrics_dict[item['name']] = item.get('values', [{}])[0].get('value', 0)
     print("✅ Daily Insights API Call Successful!")
 
-    print("Requesting account info (followers, media_count) from API...")
+    # 3-2. 계정 정보 API 호출
+    print("Requesting account info...")
     response_account = requests.get(url_account_info, params=params_account_info)
     response_account.raise_for_status()
-    response_data_account = response_account.json()
+    account_dict = response_account.json()
     print("✅ Account Info API Call Successful!")
 
 except Exception as err:
-    print(f"❌ API Call Failed!")
-    if isinstance(err, requests.exceptions.HTTPError):
-        print(json.dumps(err.response.json(), indent=2, ensure_ascii=False))
-    else:
-        print(f"An unexpected error occurred: {err}")
+    print(f"❌ API Call Failed! Error: {err}")
     exit()
 
-# --- 4. API 응답 데이터 파싱(Parsing)하기 ---
-metrics_dict = {}
-for item in response_data_insights['data']:
-    metric_name = item['name']
-    metric_value = item.get('total_value', {}).get('value', 0)
-    metrics_dict[metric_name] = metric_value
 
-followers_count = response_data_account.get('followers_count', 0)
-media_count = response_data_account.get('media_count', 0)
-
-print("\n--- Parsed Data ---")
-print("Insights:", json.dumps(metrics_dict, indent=2))
-print(f"Followers: {followers_count}, Media Count: {media_count}")
-print("-" * 20)
-
-# --- 5. Supabase에 저장할 최종 데이터 준비하기 ---
-
-# ⭐⭐⭐ ⭐⭐⭐
-kst_now = datetime.now(ZoneInfo("Asia/Seoul"))
-yesterday = kst_now - timedelta(days=1)
-date_to_insert = yesterday.strftime('%Y-%m-%d')
-# ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
-
-record_to_save = {
-    'date': date_to_insert,
-    'total_interactions': metrics_dict.get('total_interactions', 0),
-    'comments': metrics_dict.get('comments', 0),
-    'likes': metrics_dict.get('likes', 0),
-    'reach': metrics_dict.get('reach', 0),
-    'shares': metrics_dict.get('shares', 0),
-    'views': metrics_dict.get('views', 0),
-    'profile_views': metrics_dict.get('profile_views', 0),
-    'followers': followers_count,
-    'media_count': media_count
-}
-
-print("\n--- Data to Save in Supabase ---")
-print(json.dumps(record_to_save, indent=2))
-print("-" * 20)
-
-# --- 6. Supabase에 데이터 저장하기 ---
+# --- 4. Supabase에 데이터 저장하기 ---
 if not all([SUPABASE_URL, SUPABASE_KEY]):
-    print("❌ Supabase URL 또는 Key가 설정되지 않았습니다. ")
+    print("❌ Supabase URL 또는 Key가 설정되지 않았습니다.")
 else:
     try:
         print("\nConnecting to Supabase...")
         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        result = supabase.table("ig_daily_account_metrics").upsert(record_to_save).execute()
-        print("✅ Successfully saved data to Supabase!")
-        print("Supabase 대시보드에서 'ig_daily_account_metrics' 테이블을 확인해보세요!")
+        
+        # --- 4-1. 'ig_daily_account_metrics' 테이블에 저장 ---
+        record_insights = {
+            'date': date_to_insert,
+            **metrics_dict  # 딕셔너리를 풀어헤쳐서 자동으로 매핑
+        }
+        print("\n--- Saving to 'ig_daily_account_metrics' ---")
+        print(json.dumps(record_insights, indent=2))
+        supabase.table("ig_daily_account_metrics").upsert(record_insights).execute()
+        print("✅ Successfully saved daily metrics!")
+
+        # --- 4-2. 'ig_account_snapshot' 테이블에 저장 ---
+        record_snapshot = {
+            'date': date_to_insert,
+            'followers': account_dict.get('followers_count', 0),
+            'media_count': account_dict.get('media_count', 0)
+        }
+        print("\n--- Saving to 'ig_account_snapshot' ---")
+        print(json.dumps(record_snapshot, indent=2))
+        supabase.table("ig_account_snapshot").insert(record_snapshot).execute()
+        print("✅ Successfully saved account snapshot!")
+
     except Exception as e:
-        print(f"❌ Failed to save data to Supabase.")
-        print(f"Error: {e}")
+        print(f"❌ Failed to save data to Supabase. Error: {e}")
