@@ -3,6 +3,15 @@ import requests
 import json
 from supabase import create_client, Client
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+#KST 시간 정의
+kst_now = datetime.now(ZoneInfo("Asia/Seoul"))
+
+#KST 기준 '어제' 날짜 계산
+yesterday = kst_now - timedelta(days=1)
+target_date_str = yesterday.strftime('%Y-%m-%d')
+
 
 # --- 1. 설정 불러오기 ---
 
@@ -98,3 +107,4 @@ else:
     except Exception as e:
         print(f"❌ Failed to save data to Supabase.")
         print(f"Error: {e}")
+
