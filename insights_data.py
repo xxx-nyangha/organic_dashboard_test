@@ -20,25 +20,33 @@ API_VERSION = "v24.0"
 kst_now = datetime.now(ZoneInfo("Asia/Seoul"))
 yesterday_dt = kst_now - timedelta(days=1)
 today_dt = kst_now
-
 date_to_insert = yesterday_dt.strftime('%Y-%m-%d')
 since_date_str = date_to_insert
 until_date_str = today_dt.strftime('%Y-%m-%d')
 
 url_insights = f"https://graph.facebook.com/{API_VERSION}/{IG_ACCOUNT_ID}/insights"
 
-# --- 2-1. 일일 인사이트 요청 (metric_type 제거!) ---
-daily_metrics = "total_interactions,comments,likes,reach,shares,views,profile_views"
-params_daily = {
-    'metric': daily_metrics,
+# --- 2-1. 'total_value'가 필요한 메트릭 요청 준비 ---
+total_value_metrics = "total_interactions,comments,likes,shares,views,profile_views"
+params_total_value = {
+    'metric': total_value_metrics,
     'period': 'day',
     'since': since_date_str,
     'until': until_date_str,
-    # 'metric_type': 'total_value', <<< 이 줄을 완전히 삭제!
+    'metric_type': 'total_value',
     'access_token': ACCESS_TOKEN
 }
 
-# --- 2-2. 계정 정보 요청 ---
+# --- 2-2. 'reach' 메트릭 요청 준비 ---
+params_reach = {
+    'metric': 'reach',
+    'period': 'day',
+    'since': since_date_str,
+    'until': until_date_str,
+    'access_token': ACCESS_TOKEN
+}
+
+# --- 2-3. 계정 정보 요청 준비 ---
 url_account_info = f"https://graph.facebook.com/{API_VERSION}/{IG_ACCOUNT_ID}"
 params_account_info = {
     'fields': 'followers_count,media_count',
@@ -46,22 +54,29 @@ params_account_info = {
 }
 
 
-# --- 3. API 요청 보내기 ---
+# --- 3. API 요청 보내기 (이제 3번 호출!) ---
 metrics_dict = {}
 account_dict = {}
 try:
     if not IG_ACCOUNT_ID: raise ValueError("IG_ACCOUNT_ID not loaded.")
     
-    print("Requesting daily insights...")
-    response_daily = requests.get(url_insights, params=params_daily)
-    response_daily.raise_for_status()
-    
-    # --- 파싱 로직 수정! ---
-    for item in response_daily.json()['data']:
-        # 'values' 리스트의 첫 번째 항목에서 'value'를 가져옵니다.
-        metrics_dict[item['name']] = item.get('values', [{}])[0].get('value', 0)
-    print("✅ Daily Insights API Call Successful!")
+    # 3-1. 'total_value' 메트릭 호출
+    print("Requesting total_value metrics...")
+    response_total_value = requests.get(url_insights, params=params_total_value)
+    response_total_value.raise_for_status()
+    for item in response_total_value.json()['data']:
+        metrics_dict[item['name']] = item.get('total_value', {}).get('value', 0)
+    print("✅ Total Value Metrics API Call Successful!")
 
+    # 3-2. 'reach' 메트릭 호출
+    print("Requesting reach metric...")
+    response_reach = requests.get(url_insights, params=params_reach)
+    response_reach.raise_for_status()
+    for item in response_reach.json()['data']:
+        metrics_dict[item['name']] = item.get('values', [{}])[0].get('value', 0)
+    print("✅ Reach Metric API Call Successful!")
+
+    # 3-3. 계정 정보 호출
     print("Requesting account info...")
     response_account = requests.get(url_account_info, params=params_account_info)
     response_account.raise_for_status()
@@ -81,6 +96,7 @@ except Exception as err:
 if not all([SUPABASE_URL, SUPABASE_KEY]):
     print("❌ Supabase URL 또는 Key가 설정되지 않았습니다.")
 else:
+    # ...(이하 저장 로직은 동일)...
     try:
         print("\nConnecting to Supabase...")
         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -113,4 +129,3 @@ else:
 
     except Exception as e:
         print(f"❌ Failed to save data to Supabase. Error: {e}")
-
