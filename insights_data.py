@@ -4,15 +4,18 @@ import json
 from supabase import create_client, Client
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from dotenv import load_dotenv
 
 
+# --- 0. 환경 변수 로드 ---
+load_dotenv()
 
 # --- 1. 설정 불러오기 ---
 
-ACCESS_TOKEN="EAAKaZCteTM2UBQGBqipBj1HlQoZCBrwGHD2kH9SPezOxrPjlZATFZAOvAODNhZAZA2fbEpVT2IPZBbBRn9ZBvsSodS9itapatBpZCzUQXyGbTY9host2miVGEqCzuUArCZCgKq34SJom8rVZAPEVIpnoIyB6n3qaXLyuM1uL1S4vRt0I8IUKGwTYNjkDmJZC9KJxdXninjUZBTbm3CfM4"
-IG_ACCOUNT_ID="17841432803341221"
-SUPABASE_URL="https://lmzreioocratunlxlams.supabase.co"
-SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtenJlaW9vY3JhdHVubHhsYW1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4NjQ2NTIsImV4cCI6MjA4MDQ0MDY1Mn0.4i6EZxi1-0UqqN08hPSqIOwvHSxGIuxenDTpYmL-s8M"
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+IG_ACCOUNT_ID = os.getenv("IG_ACCOUNT_ID")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 API_VERSION = "v24.0"
 
 # --- 2. API 요청 준비 ---
@@ -107,3 +110,4 @@ else:
 
     except Exception as e:
         print(f"❌ Failed to save data to Supabase. Error: {e}")
+
