@@ -12,7 +12,7 @@ load_dotenv(dotenv_path="instagram.env")
 
 # --- 1. 설정 불러오기 ---
 
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+ACCESS_TOKEN = os.getenv("INSTAGRAM_ACCESS_TOKEN")
 IG_ACCOUNT_ID = os.getenv("IG_ACCOUNT_ID")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
@@ -110,5 +110,6 @@ else:
 
     except Exception as e:
         print(f"❌ Failed to save data to Supabase. Error: {e}")
+
 
 
