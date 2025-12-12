@@ -6,67 +6,62 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
-
 # --- 0. 환경 변수 로드 ---
 load_dotenv(dotenv_path="instagram.env")
 
 # --- 1. 설정 불러오기 ---
-
 ACCESS_TOKEN = os.getenv("INSTAGRAM_ACCESS_TOKEN")
 IG_ACCOUNT_ID = os.getenv("IG_ACCOUNT_ID")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 API_VERSION = "v24.0"
 
-# --- 2. API 요청 준비 ---
 # --- 2. 날짜 및 API 파라미터 준비 ---
 kst_now = datetime.now(ZoneInfo("Asia/Seoul"))
 yesterday_dt = kst_now - timedelta(days=1)
 today_dt = kst_now
 
-#db에 저장할 어제 날짜 문자열 
 date_to_insert = yesterday_dt.strftime('%Y-%m-%d')
-
 since_date_str = date_to_insert
 until_date_str = today_dt.strftime('%Y-%m-%d')
 
 url_insights = f"https://graph.facebook.com/{API_VERSION}/{IG_ACCOUNT_ID}/insights"
 
-# <<< 수정됨: 2-1. 일일 인사이트 요청
+# --- 2-1. 일일 인사이트 요청 (metric_type 제거!) ---
 daily_metrics = "total_interactions,comments,likes,reach,shares,views,profile_views"
 params_daily = {
     'metric': daily_metrics,
     'period': 'day',
     'since': since_date_str,
     'until': until_date_str,
-    'metric_type': 'total_value',
+    # 'metric_type': 'total_value', <<< 이 줄을 완전히 삭제!
     'access_token': ACCESS_TOKEN
 }
 
-# 2-2. 계정 정보 요청
+# --- 2-2. 계정 정보 요청 ---
 url_account_info = f"https://graph.facebook.com/{API_VERSION}/{IG_ACCOUNT_ID}"
 params_account_info = {
     'fields': 'followers_count,media_count',
     'access_token': ACCESS_TOKEN
 }
 
+
 # --- 3. API 요청 보내기 ---
 metrics_dict = {}
 account_dict = {}
-
 try:
     if not IG_ACCOUNT_ID: raise ValueError("IG_ACCOUNT_ID not loaded.")
     
-    # 3-1. 일일 증감 지표 API 호출
     print("Requesting daily insights...")
     response_daily = requests.get(url_insights, params=params_daily)
     response_daily.raise_for_status()
-    # API 응답 구조가 'total_value'를 포함하므로, 그에 맞게 파싱
+    
+    # --- 파싱 로직 수정! ---
     for item in response_daily.json()['data']:
-        metrics_dict[item['name']] = item.get('total_value', [{}])[0].get('value', 0)
+        # 'values' 리스트의 첫 번째 항목에서 'value'를 가져옵니다.
+        metrics_dict[item['name']] = item.get('values', [{}])[0].get('value', 0)
     print("✅ Daily Insights API Call Successful!")
 
-    # 3-2. 계정 정보 API 호출
     print("Requesting account info...")
     response_account = requests.get(url_account_info, params=params_account_info)
     response_account.raise_for_status()
@@ -82,6 +77,7 @@ except Exception as err:
     exit()
 
 # --- 4. Supabase에 데이터 저장하기 ---
+# (이 부분은 수정할 필요 없이 완벽합니다. 그대로 두세요.)
 if not all([SUPABASE_URL, SUPABASE_KEY]):
     print("❌ Supabase URL 또는 Key가 설정되지 않았습니다.")
 else:
@@ -89,7 +85,6 @@ else:
         print("\nConnecting to Supabase...")
         supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
         
-        # --- 4-1. 'ig_daily_account_metrics' 테이블에 저장 ---
         record_insights = {
             'date': date_to_insert,
             'total_interactions': metrics_dict.get('total_interactions', 0),
@@ -105,9 +100,7 @@ else:
         supabase.table("ig_daily_account_metrics").upsert(record_insights).execute()
         print("✅ Successfully saved daily metrics!")
 
-        # --- 4-2. 'ig_account_snapshot' 테이블에 저장 ---
         today_date_to_insert = kst_now.strftime('%Y-%m-%d')
-        
         record_snapshot = {
             'date': today_date_to_insert,
             'followers': account_dict.get('followers_count', 0),
@@ -120,7 +113,4 @@ else:
 
     except Exception as e:
         print(f"❌ Failed to save data to Supabase. Error: {e}")
-
-
-
 
