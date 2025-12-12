@@ -22,15 +22,23 @@ API_VERSION = "v24.0"
 # --- 2. 날짜 및 API 파라미터 준비 ---
 kst_now = datetime.now(ZoneInfo("Asia/Seoul"))
 yesterday_dt = kst_now - timedelta(days=1)
+today_dt = kst_now
+
+#db에 저장할 어제 날짜 문자열 
 date_to_insert = yesterday_dt.strftime('%Y-%m-%d')
+
+since_date_str = date_to_insert
+until_date_str = today_dt.strftime('%Y-%m-%d')
 
 url_insights = f"https://graph.facebook.com/{API_VERSION}/{IG_ACCOUNT_ID}/insights"
 
-# <<< 수정됨: 2-1. 일일 인사이트 요청 (since, until 제거! 가장 중요!)
+# <<< 수정됨: 2-1. 일일 인사이트 요청
 daily_metrics = "total_interactions,comments,likes,reach,shares,views,profile_views"
 params_daily = {
     'metric': daily_metrics,
-    'period': 'day',  # period=day 만 사용하면 API가 자동으로 '어제' 데이터를 줍니다.
+    'period': 'day',
+    'since': since_date_str,
+    'until': until_date_str,
     'metric_type': 'total_value',
     'access_token': ACCESS_TOKEN
 }
@@ -55,7 +63,7 @@ try:
     response_daily.raise_for_status()
     # API 응답 구조가 'total_value'를 포함하므로, 그에 맞게 파싱
     for item in response_daily.json()['data']:
-        metrics_dict[item['name']] = item.get('total_value', {}).get('value', 0)
+        metrics_dict[item['name']] = item.get('total_value', [{}])[0].get('value', 0)
     print("✅ Daily Insights API Call Successful!")
 
     # 3-2. 계정 정보 API 호출
@@ -98,8 +106,10 @@ else:
         print("✅ Successfully saved daily metrics!")
 
         # --- 4-2. 'ig_account_snapshot' 테이블에 저장 ---
+        today_date_to_insert = kst_now.strftime('%Y-%m-%d')
+        
         record_snapshot = {
-            'date': date_to_insert,
+            'date': today_date_to_insert,
             'followers': account_dict.get('followers_count', 0),
             'media_count': account_dict.get('media_count', 0)
         }
@@ -110,6 +120,7 @@ else:
 
     except Exception as e:
         print(f"❌ Failed to save data to Supabase. Error: {e}")
+
 
 
 
