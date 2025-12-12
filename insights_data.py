@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 
 # --- 0. 환경 변수 로드 ---
-load_dotenv()
+load_dotenv(dotenv_path="instagram.env")
 
 # --- 1. 설정 불러오기 ---
 
@@ -110,4 +110,5 @@ else:
 
     except Exception as e:
         print(f"❌ Failed to save data to Supabase. Error: {e}")
+
 
